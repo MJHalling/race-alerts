@@ -10,7 +10,7 @@ import time
 tracked_horses = {
     "Velocity", "Air Force Red", "Silversmith",
     "La Ville Lumiere", "Julia Street", "Toodles",
-    "Cultural", "Ariri"
+    "Cultural", "Ariri", "Needlepoint"
 }
 
 # Twilio setup
