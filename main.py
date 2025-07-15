@@ -5,23 +5,23 @@ from email.message import EmailMessage
 import os
 import time
 
-# ✅ Tracked horses (updated list)
+# Tracked horses
 tracked_horses = {
     "Velocity", "Air Force Red", "Silversmith",
     "La Ville Lumiere", "Julia Street", "Toodles",
     "Cultural", "Ariri", "Needlepoint", "Speed Shopper"
 }
 
-# ✅ Normalize helper for deduplication
+# Normalize row text for caching
 def normalize_row_text(raw):
     return " ".join(raw.lower().split())
 
-# ✅ Email Setup
+# Email setup
 EMAIL_ADDRESS = os.environ['EMAIL_ADDRESS']
 EMAIL_PASSWORD = os.environ['EMAIL_PASSWORD']
 EMAIL_TO = os.environ['EMAIL_TO'].split(',')
 
-# ✅ Load/Save Entry Cache
+# Load/save seen entries
 def load_seen_entries():
     try:
         with open("seen_entries.txt", "r") as f:
@@ -37,6 +37,7 @@ seen_entries = load_seen_entries()
 previous_snapshot = set()
 entry_data = {}
 
+# Send alert via email
 def send_alert(message, horse, subject_override=None):
     subject = subject_override if subject_override else f"{horse} 🏇 Race Target!"
     try:
@@ -52,6 +53,7 @@ def send_alert(message, horse, subject_override=None):
     except Exception as e:
         print(f"❌ Failed to send email: {e}")
 
+# Check upcoming races
 def check_site():
     global entry_data
     global previous_snapshot
@@ -118,9 +120,57 @@ def check_site():
     previous_snapshot = current_snapshot.copy()
     entry_data = current_entry_data.copy()
 
+# Check confirmed entries
 def check_entries():
     url = "https://eclipsetbpartners.com/stable/upcoming-races/entries/"
     print(f"📡 Checking Entries: {url}")
     try:
         response = requests.get(url, timeout=10)
         if response.status_code != 200:
+            print(f"⚠️ Entries page returned {response.status_code}")
+            return
+
+        soup = BeautifulSoup(response.text, "html.parser")
+        for row in soup.find_all("tr"):
+            raw = row.get_text(separator="|").strip()
+            normalized = normalize_row_text(raw)
+
+            for horse in tracked_horses:
+                horse_key = horse.lower()
+                if horse_key in normalized:
+                    cache_key = f"ENTRY:{horse_key}::{normalized}"
+                    if cache_key not in seen_entries:
+                        seen_entries.add(cache_key)
+                        save_entry(cache_key)
+
+                        lines = [line.strip() for line in raw.replace("|", "\n").splitlines() if line.strip()]
+                        date = lines[0] if lines else ""
+                        track = next((l for l in lines if l not in [date, horse] and "Purse" not in l and "Jockey" not in l and "Race" not in l and "Post" not in l), "")
+
+                        msg_lines = [
+                            f"🎯 {horse} Race Entry!",
+                            "",
+                            date,
+                            horse,
+                            track,
+                        ]
+
+                        for keyword in ["Purse", "Jockey", "Race", "Post Position", "Post Time"]:
+                            match = next((l for l in lines if keyword in l), None)
+                            if match:
+                                msg_lines.append(match)
+
+                        msg_lines.append("")
+                        msg_lines.append("Reply STOP to unsubscribe")
+                        msg = "\n".join(msg_lines)
+
+                        subject = f"{horse} 🎯 Entry – {track} {date}"
+                        send_alert(msg, horse, subject_override=subject)
+    except Exception as e:
+        print(f"⚠️ Error checking Entries page: {e}")
+
+# Main loop
+while True:
+    check_site()
+    check_entries()
+    time.sleep(3600)
