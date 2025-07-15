@@ -85,6 +85,7 @@ def check_site():
         print(f"📢 Alert:\n{msg}")
         send_alert(msg, horse)
 
+previous_snapshot = set()
 # Check every hour
 while True:
     check_site()
