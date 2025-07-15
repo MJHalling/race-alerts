@@ -10,8 +10,8 @@ import time
 tracked_horses = {
     "Velocity", "Air Force Red", "Silversmith",
     "La Ville Lumiere", "Julia Street", "Toodles",
-    "Cultural", "Ariri", "Needlepoint", "Diver"
-
+    "Cultural", "Ariri", "Needlepoint",
+    "Auntie"
 }
 
 # ✅ Twilio Setup
@@ -27,13 +27,23 @@ EMAIL_ADDRESS = os.environ['EMAIL_ADDRESS']
 EMAIL_PASSWORD = os.environ['EMAIL_PASSWORD']
 EMAIL_TO = os.environ['EMAIL_TO'].split(',')
 
-# ✅ Internal caches
-seen_entries = set()
+# ✅ Load/Save Entry Cache
+def load_seen_entries():
+    try:
+        with open("seen_entries.txt", "r") as f:
+            return set(line.strip() for line in f)
+    except FileNotFoundError:
+        return set()
+
+def save_entry(entry):
+    with open("seen_entries.txt", "a") as f:
+        f.write(entry + "\n")
+
+seen_entries = load_seen_entries()
 previous_snapshot = set()
 entry_data = {}
 entries_seen = set()
 
-# ✅ Alert sender
 def send_alert(message, horse, subject_override=None):
     subject = subject_override if subject_override else f"{horse} 🏇 Race Target!"
     try:
@@ -58,7 +68,6 @@ def send_alert(message, horse, subject_override=None):
         except Exception as e2:
             print(f"❌ Failed to send email fallback: {e2}")
 
-# ✅ Upcoming Entries Scraper
 def check_site():
     global previous_snapshot
     current_snapshot = set()
@@ -84,8 +93,10 @@ def check_site():
                     if horse in row_text:
                         current_snapshot.add(horse)
                         current_entry_data[horse] = row_text
-                        if row_text not in seen_entries:
-                            seen_entries.add(row_text)
+                        cache_key = f"{horse}:{row_text.strip()}"
+                        if cache_key not in seen_entries:
+                            seen_entries.add(cache_key)
+                            save_entry(cache_key)
                             new_alerts.append((horse, row_text))
         except Exception as e:
             print(f"⚠️ Error on page {page_num}: {e}")
@@ -116,7 +127,6 @@ def check_site():
     previous_snapshot = current_snapshot.copy()
     entry_data = current_entry_data.copy()
 
-# ✅ Confirmed Entries Scraper
 def check_entries():
     url = "https://eclipsetbpartners.com/stable/upcoming-races/entries/"
     print(f"📡 Checking Entries: {url}")
@@ -130,36 +140,40 @@ def check_entries():
         for row in soup.find_all("tr"):
             row_text = row.get_text(separator="|").strip()
             for horse in tracked_horses:
-                if horse in row_text and row_text not in entries_seen:
-                    entries_seen.add(row_text)
-                    lines = [line.strip() for line in row_text.replace("|", "\n").splitlines() if line.strip()]
-                    date = lines[0] if lines else ""
-                    track = next((l for l in lines if l not in [date, horse] and "Purse" not in l and "Jockey" not in l and "Race" not in l and "Post" not in l), "")
+                if horse in row_text:
+                    cache_key = f"ENTRY:{horse}:{row_text.strip()}"
+                    if cache_key not in seen_entries:
+                        seen_entries.add(cache_key)
+                        save_entry(cache_key)
 
-                    msg_lines = [
-                        f"🎯 {horse} Race Entry!",
-                        "",
-                        date,
-                        horse,
-                        track,
-                    ]
+                        lines = [line.strip() for line in row_text.replace("|", "\n").splitlines() if line.strip()]
+                        date = lines[0] if lines else ""
+                        track = next((l for l in lines if l not in [date, horse] and "Purse" not in l and "Jockey" not in l and "Race" not in l and "Post" not in l), "")
 
-                    for keyword in ["Purse", "Jockey", "Race", "Post Position", "Post Time"]:
-                        match = next((l for l in lines if keyword in l), None)
-                        if match:
-                            msg_lines.append(match)
+                        msg_lines = [
+                            f"🎯 {horse} Race Entry!",
+                            "",
+                            date,
+                            horse,
+                            track,
+                        ]
 
-                    msg_lines.append("")
-                    msg_lines.append("Reply STOP to unsubscribe")
-                    msg = "\n".join(msg_lines)
+                        for keyword in ["Purse", "Jockey", "Race", "Post Position", "Post Time"]:
+                            match = next((l for l in lines if keyword in l), None)
+                            if match:
+                                msg_lines.append(match)
 
-                    subject = f"{horse} 🎯 Entry – {track} {date}"
-                    send_alert(msg, horse, subject_override=subject)
+                        msg_lines.append("")
+                        msg_lines.append("Reply STOP to unsubscribe")
+                        msg = "\n".join(msg_lines)
+
+                        subject = f"{horse} 🎯 Entry – {track} {date}"
+                        send_alert(msg, horse, subject_override=subject)
     except Exception as e:
         print(f"⚠️ Error checking Entries page: {e}")
 
-# ✅ Run checks hourly
 while True:
     check_site()
     check_entries()
     time.sleep(3600)
+
