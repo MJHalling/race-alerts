@@ -6,13 +6,16 @@ from email.message import EmailMessage
 import os
 import time
 
-# ✅ Tracked horses
+# ✅ Tracked horses (updated list)
 tracked_horses = {
     "Velocity", "Air Force Red", "Silversmith",
     "La Ville Lumiere", "Julia Street", "Toodles",
-    "Cultural", "Ariri", "Needlepoint",
-    "Auntie"
+    "Cultural", "Ariri", "Needlepoint", "Speed Shopper"
 }
+
+# ✅ Normalize helper to suppress duplicates
+def normalize_row_text(raw):
+    return " ".join(raw.lower().split())
 
 # ✅ Twilio Setup
 twilio_client = Client(
@@ -42,7 +45,6 @@ def save_entry(entry):
 seen_entries = load_seen_entries()
 previous_snapshot = set()
 entry_data = {}
-entries_seen = set()
 
 def send_alert(message, horse, subject_override=None):
     subject = subject_override if subject_override else f"{horse} 🏇 Race Target!"
@@ -88,16 +90,19 @@ def check_site():
 
             soup = BeautifulSoup(response.text, "html.parser")
             for row in soup.find_all("tr"):
-                row_text = row.get_text(separator="|").strip()
+                raw = row.get_text(separator="|").strip()
+                normalized = normalize_row_text(raw)
+
                 for horse in tracked_horses:
-                    if horse in row_text:
+                    horse_key = horse.lower()
+                    if horse_key in normalized:
                         current_snapshot.add(horse)
-                        current_entry_data[horse] = row_text
-                        cache_key = f"{horse}:{row_text.strip()}"
+                        current_entry_data[horse] = raw
+                        cache_key = f"{horse_key}::{normalized}"
                         if cache_key not in seen_entries:
                             seen_entries.add(cache_key)
                             save_entry(cache_key)
-                            new_alerts.append((horse, row_text))
+                            new_alerts.append((horse, raw))
         except Exception as e:
             print(f"⚠️ Error on page {page_num}: {e}")
 
@@ -138,15 +143,18 @@ def check_entries():
 
         soup = BeautifulSoup(response.text, "html.parser")
         for row in soup.find_all("tr"):
-            row_text = row.get_text(separator="|").strip()
+            raw = row.get_text(separator="|").strip()
+            normalized = normalize_row_text(raw)
+
             for horse in tracked_horses:
-                if horse in row_text:
-                    cache_key = f"ENTRY:{horse}:{row_text.strip()}"
+                horse_key = horse.lower()
+                if horse_key in normalized:
+                    cache_key = f"ENTRY:{horse_key}::{normalized}"
                     if cache_key not in seen_entries:
                         seen_entries.add(cache_key)
                         save_entry(cache_key)
 
-                        lines = [line.strip() for line in row_text.replace("|", "\n").splitlines() if line.strip()]
+                        lines = [line.strip() for line in raw.replace("|", "\n").splitlines() if line.strip()]
                         date = lines[0] if lines else ""
                         track = next((l for l in lines if l not in [date, horse] and "Purse" not in l and "Jockey" not in l and "Race" not in l and "Post" not in l), "")
 
@@ -176,4 +184,3 @@ while True:
     check_site()
     check_entries()
     time.sleep(3600)
-
