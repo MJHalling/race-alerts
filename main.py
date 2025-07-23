@@ -119,7 +119,7 @@ def check_site():
             f"📰 {horse} Race Update\n\n"
             f"{clean_details}\n\n"
             "This race is no longer listed under Upcoming Entries. "
-            "This may reflect a draw, scratch, or site update."
+            "This may reflect a site update or race entries being drawn."
         )
         subject_line = f"{horse} 📰 Race Update"
         send_alert(msg, horse, subject_override=subject_line)
@@ -149,9 +149,15 @@ def check_entries():
                         seen_entries.add(cache_key)
                         save_entry(cache_key)
 
-                        clean_details = "\n".join(
+                        # ✅ Inserted clarification logic for Race # and Post Position
+                        clean_lines = [
                             line.strip() for line in raw.replace("|", "\n").splitlines() if line.strip()
-                        )
+                        ]
+                        if len(clean_lines) >= 7:
+                            clean_lines[3] = f"Race # {clean_lines[3]}"
+                            clean_lines[5] = f"Post Position # {clean_lines[5]}"
+                        clean_details = "\n".join(clean_lines)
+
                         msg = f"🎯 {horse} Race Entry!\n\n{clean_details}\n\nReply STOP to unsubscribe"
                         subject = f"{horse} 🎯 Entry Update"
                         send_alert(msg, horse, subject_override=subject)
