@@ -104,4 +104,64 @@ def check_site():
         clean_details = "\n".join(
             line.strip() for line in details.replace("|", "\n").splitlines() if line.strip()
         )
-        msg = f"🏇 {horse
+        msg = f"🏇 {horse} Race Target!\n\n{clean_details}\n\nReply STOP to unsubscribe"
+        send_alert(msg, horse)
+        entry_data[horse] = details
+
+    for horse, last_details in removed_alerts:
+        clean_details = "\n".join(
+            line.strip() for line in last_details.replace("|", "\n").splitlines() if line.strip()
+        )
+        msg = (
+            f"📰 {horse} Race Update\n\n"
+            f"{clean_details}\n\n"
+            "This race is no longer listed under Upcoming Entries. "
+            "This may reflect a site update or race entries being drawn."
+        )
+        subject_line = f"{horse} 📰 Race Update"
+        send_alert(msg, horse, subject_override=subject_line)
+
+    previous_snapshot = current_snapshot.copy()
+    entry_data = current_entry_data.copy()
+
+def check_entries():
+    url = "https://eclipsetbpartners.com/stable/upcoming-races/entries/"
+    print(f"📡 Checking Entries: {url}")
+    try:
+        response = requests.get(url, timeout=10)
+        if response.status_code != 200:
+            print(f"⚠️ Entries page returned {response.status_code}")
+            return
+
+        soup = BeautifulSoup(response.text, "html.parser")
+        for row in soup.find_all("tr"):
+            raw = row.get_text(separator="|").strip()
+            normalized = normalize_row_text(raw)
+
+            for horse in tracked_horses:
+                horse_key = horse.lower()
+                if horse_key in normalized:
+                    cache_key = f"ENTRY:{horse_key}::{normalized}"
+                    if cache_key not in seen_entries:
+                        seen_entries.add(cache_key)
+                        save_entry(cache_key)
+
+                        clean_lines = [
+                            line.strip() for line in raw.replace("|", "\n").splitlines() if line.strip()
+                        ]
+                        if len(clean_lines) >= 7:
+                            clean_lines[3] = f"Race # {clean_lines[3]}"
+                            clean_lines[5] = f"Post Position # {clean_lines[5]}"
+                        clean_details = "\n".join(clean_lines)
+
+                        msg = f"🎯 {horse} Race Entry!\n\n{clean_details}\n\nReply STOP to unsubscribe"
+                        subject = f"{horse} 🎯 Entry Update"
+                        send_alert(msg, horse, subject_override=subject)
+    except Exception as e:
+        print(f"⚠️ Error checking Entries page: {e}")
+
+# 🕒 Hourly scan loop
+while True:
+    check_site()
+    check_entries()
+    time.sleep(3600)
