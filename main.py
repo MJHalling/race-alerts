@@ -43,13 +43,22 @@ def send_alert(message, horse, subject_override=None):
     try:
         twilio_sid = os.environ['TWILIO_SID']
         twilio_auth = os.environ['TWILIO_AUTH_TOKEN']
-        messaging_sid = os.environ['TWILIO_FROM']  # This is your Messaging Service SID
+        messaging_sid = os.environ['TWILIO_FROM']  # This should be a Messaging Service SID or phone number
         twilio_to = os.environ['TWILIO_TO']
+
+        # Diagnostic logging
+        print("[DEBUG] Twilio credentials loaded:")
+        print(f"TWILIO_SID: {twilio_sid[:6]}…")
+        print(f"TWILIO_AUTH_TOKEN: {twilio_auth[:6]}…")
+        print(f"TWILIO_FROM: {messaging_sid}")
+        print(f"TWILIO_TO: {twilio_to}")
+        print(f"[DEBUG] Preparing message for {horse}:")
+        print(message)
 
         client = Client(twilio_sid, twilio_auth)
         sms = client.messages.create(
             body=message,
-            messaging_service_sid=messaging_sid,
+            from_=messaging_sid,  # Or use messaging_service_sid=… depending on your setup
             to=twilio_to
         )
         print(f"📲 SMS alert sent for {horse}. SID: {sms.sid}")
@@ -160,8 +169,15 @@ def check_entries():
     except Exception as e:
         print(f"⚠️ Error checking Entries page: {e}")
 
-# 🕒 Hourly scan loop
-while True:
-    check_site()
-    check_entries()
-    time.sleep(3600)
+# 🧪 Manual Test Block
+if __name__ == "__main__":
+    send_alert(
+        "✅ Manual test: Velocity enters Del Mar. Race # 2, Post # 6. Reply STOP to unsubscribe.",
+        "Velocity"
+    )
+
+# 🕒 Hourly scan loop (comment out during testing if needed)
+# while True:
+#     check_site()
+#     check_entries()
+#     time.sleep(3600)
