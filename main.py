@@ -58,7 +58,7 @@ def send_alert(message, horse, subject_override=None):
         client = Client(twilio_sid, twilio_auth)
         sms = client.messages.create(
             body=message,
-            from_=messaging_sid,  # Or use messaging_service_sid=… depending on your setup
+            messaging_service_sid=messaging_sid,
             to=twilio_to
         )
         print(f"📲 SMS alert sent for {horse}. SID: {sms.sid}")
