@@ -107,7 +107,7 @@ def check_site():
         clean_details = "\n".join(
             line.strip() for line in details.replace("|", "\n").splitlines() if line.strip()
         )
-        msg = f"🏇 {horse} Race Target!\n\n{clean_details}\n\nReply STOP to unsubscribe"
+        msg = f"{horse} 🏇 Race Target!\n\n{clean_details}\n\nReply STOP to unsubscribe"
         send_alert(msg, horse)
         entry_data[horse] = details
 
@@ -116,7 +116,7 @@ def check_site():
             line.strip() for line in last_details.replace("|", "\n").splitlines() if line.strip()
         )
         msg = (
-            f"📰 {horse} Race Update\n\n"
+            f"{horse} 📰 Race Update\n\n"
             f"{clean_details}\n\n"
             "This race is no longer listed under Upcoming Entries. "
             "This may reflect a site update or race entries being drawn."
@@ -153,12 +153,12 @@ def check_entries():
                             line.strip() for line in raw.replace("|", "\n").splitlines() if line.strip()
                         ]
                         if len(clean_lines) >= 7:
-                            clean_lines[3] = f"Race # {clean_lines[3]}"
-                            clean_lines[5] = f"Post Position # {clean_lines[5]}"
+                            clean_lines[3] = f"Race #{clean_lines[3]}"
+                            clean_lines[5] = f"Post Position #{clean_lines[5]}"
                         clean_details = "\n".join(clean_lines)
 
-                        msg = f"🎯 {horse} Race Entry!\n\n{clean_details}\n\nReply STOP to unsubscribe"
-                        subject = f"{horse} 🎯 Entry Update"
+                        msg = f"{horse} 🎯 Race Entry!\n\n{clean_details}\n\nReply STOP to unsubscribe"
+                        subject = f"{horse} 🎯 Race Entry!"
                         send_alert(msg, horse, subject_override=subject)
     except Exception as e:
         print(f"⚠️ Error checking Entries page: {e}")
