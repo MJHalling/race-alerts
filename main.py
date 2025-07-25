@@ -157,8 +157,8 @@ def check_entries():
                             clean_lines[5] = f"Post Position #{clean_lines[5]}"
                         clean_details = "\n".join(clean_lines)
 
-                        msg = f"{horse} 🎯 Race Entry!\n\n{clean_details}\n\nReply STOP to unsubscribe"
-                        subject = f"{horse} 🎯 Race Entry!"
+                        msg = f"{horse} 🎯 Entry!\n\n{clean_details}\n\nReply STOP to unsubscribe"
+                        subject = f"{horse} 🎯 Entry!"
                         send_alert(msg, horse, subject_override=subject)
     except Exception as e:
         print(f"⚠️ Error checking Entries page: {e}")
