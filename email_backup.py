@@ -12,22 +12,18 @@ tracked_horses = {
     "There Goes Harvard"
 }
 
-
 # ✅ Normalize helper
 def normalize_row_text(raw):
     return " ".join(raw.lower().split())
-
 
 # ✅ Email setup
 EMAIL_ADDRESS = os.environ['EMAIL_ADDRESS']
 EMAIL_PASSWORD = os.environ['EMAIL_PASSWORD']
 EMAIL_TO = os.environ['EMAIL_TO'].split(',')
 
-
 # ✅ Cache file path helper
 def cache_path():
     return os.path.join(os.path.dirname(__file__), "seen_entries.txt")
-
 
 def load_seen_entries():
     try:
@@ -39,17 +35,14 @@ def load_seen_entries():
         print("[DEBUG] No cache file found. Starting fresh.")
         return set()
 
-
 def save_entry(entry):
     with open(cache_path(), "a") as f:
         f.write(entry + "\n")
         print(f"[DEBUG] Wrote cache entry: {entry[:60]}…")
 
-
 seen_entries = load_seen_entries()
 previous_snapshot = set()
 entry_data = {}
-
 
 def send_alert(message, horse, subject_override=None):
     subject = subject_override if subject_override else f"{horse} 🏇 Race Target!"
@@ -57,7 +50,7 @@ def send_alert(message, horse, subject_override=None):
         email = EmailMessage()
         email['Subject'] = subject
         email['From'] = EMAIL_ADDRESS
-        email['To'] = EMAIL_TO
+        email['To'] = ', '.join(EMAIL_TO)  # ✅ Correct recipient formatting
         email.set_content(message)
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
             smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
@@ -65,7 +58,6 @@ def send_alert(message, horse, subject_override=None):
         print(f"📬 Email alert sent for {horse}.")
     except Exception as e:
         print(f"❌ Failed to send email: {e}")
-
 
 def check_site():
     global entry_data
@@ -84,9 +76,7 @@ def check_site():
         try:
             response = requests.get(url, timeout=10)
             if response.status_code != 200:
-                print(
-                    f"⚠️ Page {page_num} returned status {response.status_code}"
-                )
+                print(f"⚠️ Page {page_num} returned status {response.status_code}")
                 continue
 
             soup = BeautifulSoup(response.text, "html.parser")
@@ -105,9 +95,7 @@ def check_site():
                             save_entry(cache_key)
                             new_alerts.append((horse, raw))
                         else:
-                            print(
-                                f"[DEBUG] Skipping already seen: {cache_key[:60]}…"
-                            )
+                            print(f"[DEBUG] Skipping already seen: {cache_key[:60]}…")
         except Exception as e:
             print(f"⚠️ Error on page {page_num}: {e}")
 
@@ -117,27 +105,27 @@ def check_site():
 
     for horse, details in new_alerts:
         clean_details = "\n".join(
-            line.strip() for line in details.replace("|", "\n").splitlines()
-            if line.strip())
-        msg = f"🏇 {horse} Race Target!\n\n{clean_details}\n\nReply STOP to unsubscribe"
+            line.strip() for line in details.replace("|", "\n").splitlines() if line.strip()
+        )
+        msg = f"{horse} 🏇 Race Target!\n\n{clean_details}\n\nReply STOP to unsubscribe"
         send_alert(msg, horse)
         entry_data[horse] = details
 
     for horse, last_details in removed_alerts:
         clean_details = "\n".join(
-            line.strip()
-            for line in last_details.replace("|", "\n").splitlines()
-            if line.strip())
-        msg = (f"📰 {horse} Race Update\n\n"
-               f"{clean_details}\n\n"
-               "This race is no longer listed under Upcoming Entries. "
-               "This may reflect a site update or race entries being drawn.")
+            line.strip() for line in last_details.replace("|", "\n").splitlines() if line.strip()
+        )
+        msg = (
+            f"{horse} 📰 Race Update\n\n"
+            f"{clean_details}\n\n"
+            "This race is no longer listed under Upcoming Entries. "
+            "This may reflect a site update or race entries being drawn."
+        )
         subject_line = f"{horse} 📰 Race Update"
         send_alert(msg, horse, subject_override=subject_line)
 
     previous_snapshot = current_snapshot.copy()
     entry_data = current_entry_data.copy()
-
 
 def check_entries():
     url = "https://eclipsetbpartners.com/stable/upcoming-races/entries/"
@@ -161,24 +149,19 @@ def check_entries():
                         seen_entries.add(cache_key)
                         save_entry(cache_key)
 
-                        # ✅ Inserted clarification logic for Race # and Post Position
                         clean_lines = [
-                            line.strip()
-                            for line in raw.replace("|", "\n").splitlines()
-                            if line.strip()
+                            line.strip() for line in raw.replace("|", "\n").splitlines() if line.strip()
                         ]
                         if len(clean_lines) >= 7:
-                            clean_lines[3] = f"Race # {clean_lines[3]}"
-                            clean_lines[
-                                5] = f"Post Position # {clean_lines[5]}"
+                            clean_lines[3] = f"Race #{clean_lines[3]}"
+                            clean_lines[5] = f"Post Position #{clean_lines[5]}"
                         clean_details = "\n".join(clean_lines)
 
-                        msg = f"🎯 {horse} Race Entry!\n\n{clean_details}\n\nReply STOP to unsubscribe"
-                        subject = f"{horse} 🎯 Entry Update"
+                        msg = f"{horse} 🎯 Entry!\n\n{clean_details}\n\nReply STOP to unsubscribe"
+                        subject = f"{horse} 🎯 Entry!"
                         send_alert(msg, horse, subject_override=subject)
     except Exception as e:
         print(f"⚠️ Error checking Entries page: {e}")
-
 
 while True:
     check_site()

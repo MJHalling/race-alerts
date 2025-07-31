@@ -1,7 +1,6 @@
 import requests
 from bs4 import BeautifulSoup
-import smtplib
-from email.message import EmailMessage
+from twilio.rest import Client
 import os
 import time
 
@@ -16,10 +15,12 @@ tracked_horses = {
 def normalize_row_text(raw):
     return " ".join(raw.lower().split())
 
-# ✅ Email setup
-EMAIL_ADDRESS = os.environ['EMAIL_ADDRESS']
-EMAIL_PASSWORD = os.environ['EMAIL_PASSWORD']
-EMAIL_TO = os.environ['EMAIL_TO'].split(',')
+# ✅ Twilio setup
+TWILIO_SID = os.getenv("TWILIO_SID")
+TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
+TWILIO_FROM = os.getenv("TWILIO_FROM")
+TWILIO_TO_LIST = os.getenv("TWILIO_TO", "").split(",")
+twilio_client = Client(TWILIO_SID, TWILIO_AUTH_TOKEN)
 
 # ✅ Cache file path helper
 def cache_path():
@@ -44,21 +45,23 @@ seen_entries = load_seen_entries()
 previous_snapshot = set()
 entry_data = {}
 
+# ✅ SMS alert sender
 def send_alert(message, horse, subject_override=None):
-    subject = subject_override if subject_override else f"{horse} 🏇 Race Target!"
-    try:
-        email = EmailMessage()
-        email['Subject'] = subject
-        email['From'] = EMAIL_ADDRESS
-        email['To'] = ', '.join(EMAIL_TO)  # ✅ Correct recipient formatting
-        email.set_content(message)
-        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
-            smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-            smtp.send_message(email)
-        print(f"📬 Email alert sent for {horse}.")
-    except Exception as e:
-        print(f"❌ Failed to send email: {e}")
+    title = subject_override if subject_override else f"{horse} 🏇 Race Target!"
+    sms_content = f"{title}\n\n{message}"
 
+    for recipient in TWILIO_TO_LIST:
+        try:
+            twilio_client.messages.create(
+                body=sms_content,
+                from_=TWILIO_FROM,
+                to=recipient.strip()
+            )
+            print(f"📲 SMS alert sent to {recipient} for {horse}.")
+        except Exception as e:
+            print(f"❌ Failed to send SMS to {recipient}: {e}")
+
+# ✅ Scrape and alert for upcoming races
 def check_site():
     global entry_data
     global previous_snapshot
@@ -127,6 +130,7 @@ def check_site():
     previous_snapshot = current_snapshot.copy()
     entry_data = current_entry_data.copy()
 
+# ✅ Scrape and alert for race entries
 def check_entries():
     url = "https://eclipsetbpartners.com/stable/upcoming-races/entries/"
     print(f"📡 Checking Entries: {url}")
@@ -163,7 +167,9 @@ def check_entries():
     except Exception as e:
         print(f"⚠️ Error checking Entries page: {e}")
 
+# ✅ Loop forever
 while True:
     check_site()
     check_entries()
+    print("🕐 Sleeping for 1 hour…")
     time.sleep(3600)
