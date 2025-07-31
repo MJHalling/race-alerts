@@ -45,7 +45,7 @@ seen_entries = load_seen_entries()
 previous_snapshot = set()
 entry_data = {}
 
-# ✅ SMS alert sender (no redundant title or unsubscribe line)
+# ✅ SMS alert sender
 def send_alert(message, horse, subject_override=None):
     title = subject_override if subject_override else f"{horse} 🏇 Race Target!"
     sms_content = f"{title}\n\n{message}"
@@ -110,20 +110,21 @@ def check_site():
         clean_details = "\n".join(
             line.strip() for line in details.replace("|", "\n").splitlines() if line.strip()
         )
-        send_alert(clean_details, horse)
+        msg = f"{clean_details}\n\nReply STOP to unsubscribe"
+        send_alert(msg, horse)
         entry_data[horse] = details
 
     for horse, last_details in removed_alerts:
         clean_details = "\n".join(
             line.strip() for line in last_details.replace("|", "\n").splitlines() if line.strip()
         )
-        msg_body = (
+        msg = (
             f"{clean_details}\n\n"
             "This race is no longer listed under Upcoming Entries. "
             "This may reflect a site update or race entries being drawn."
         )
         subject_line = f"{horse} 📰 Race Update"
-        send_alert(msg_body, horse, subject_override=subject_line)
+        send_alert(msg, horse, subject_override=subject_line)
 
     previous_snapshot = current_snapshot.copy()
     entry_data = current_entry_data.copy()
@@ -159,8 +160,9 @@ def check_entries():
                             clean_lines[5] = f"Post Position #{clean_lines[5]}"
                         clean_details = "\n".join(clean_lines)
 
+                        msg = f"\n\n{clean_details}\n\nReply STOP to unsubscribe"
                         subject = f"{horse} 🎯 Entry!"
-                        send_alert(clean_details, horse, subject_override=subject)
+                        send_alert(msg, horse, subject_override=subject)
     except Exception as e:
         print(f"⚠️ Error checking Entries page: {e}")
 
@@ -169,4 +171,4 @@ while True:
     check_site()
     check_entries()
     print("🕐 Sleeping for 1 hour…")
-    time.sleep(3600
+    time.sleep(3600)
