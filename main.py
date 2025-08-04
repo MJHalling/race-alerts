@@ -110,7 +110,7 @@ def check_site():
         clean_details = "\n".join(
             line.strip() for line in details.replace("|", "\n").splitlines() if line.strip()
         )
-        msg = f"{clean_details}\n\nReply STOP to unsubscribe"
+        msg = f"{clean_details}"
         send_alert(msg, horse)
         entry_data[horse] = details
 
@@ -160,7 +160,7 @@ def check_entries():
                             clean_lines[5] = f"Post Position #{clean_lines[5]}"
                         clean_details = "\n".join(clean_lines)
 
-                        msg = f"\n\n{clean_details}\n\nReply STOP to unsubscribe"
+                        msg = f"\n\n{clean_details}"
                         subject = f"{horse} 🎯 Entry!"
                         send_alert(msg, horse, subject_override=subject)
     except Exception as e:
