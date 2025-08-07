@@ -160,7 +160,7 @@ def check_entries():
                             clean_lines[5] = f"Post Position #{clean_lines[5]}"
                         clean_details = "\n".join(clean_lines)
 
-                        msg = f"\n\n{clean_details}"
+                        msg = f"\n{clean_details}"
                         subject = f"{horse} 🎯 Entry!"
                         send_alert(msg, horse, subject_override=subject)
     except Exception as e:
