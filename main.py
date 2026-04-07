@@ -6,9 +6,8 @@ import time
 
 # ✅ Tracked horses
 tracked_horses = {
-    "Velocity", "Air Force Red", "Silversmith", "La Ville Lumiere",
-    "Julia Street", "Toodles", "Cultural", "Ariri", "Needlepoint",
-    "There Goes Harvard"
+    "Dash", "Logistical", "Presenting", "La Ville Lumiere",
+    "Flooding", "Vexing", "Hip Hop Chrissy", "Cuban Flame"
 }
 
 # ✅ Normalize helper
