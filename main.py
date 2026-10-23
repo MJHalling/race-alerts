@@ -4,6 +4,16 @@ from twilio.rest import Client
 import os
 import time
 
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/141.0.0.0 Safari/537.36"
+    ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+}
+
 # ✅ Tracked horses
 tracked_horses = {
     "Dash", "Logistical", "Presenting", "La Ville Lumiere",
@@ -76,7 +86,7 @@ def check_site():
         url = base_url if page_num == 1 else f"{base_url}/page/{page_num}/"
         print(f"🔍 Checking: {url}")
         try:
-            response = requests.get(url, timeout=10)
+            response = requests.get(url, headers=HEADERS, timeout=10)
             if response.status_code != 200:
                 print(f"⚠️ Page {page_num} returned status {response.status_code}")
                 continue
@@ -120,7 +130,7 @@ def check_site():
         msg = (
             f"{clean_details}\n\n"
             "This race is no longer listed under Upcoming Entries. "
-            "This may reflect a site update or race entries being drawn."
+            "This may reflect race entries being drawn or a website update."
         )
         subject_line = f"{horse} 📰 Race Update"
         send_alert(msg, horse, subject_override=subject_line)
@@ -133,7 +143,7 @@ def check_entries():
     url = "https://eclipsetbpartners.com/stable/upcoming-races/entries/"
     print(f"📡 Checking Entries: {url}")
     try:
-        response = requests.get(url, timeout=10)
+        response = requests.get(url, headers=HEADERS, timeout=10)
         if response.status_code != 200:
             print(f"⚠️ Entries page returned {response.status_code}")
             return
