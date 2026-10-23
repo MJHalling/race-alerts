@@ -89,6 +89,8 @@ def check_site():
             response = requests.get(url, headers=HEADERS, timeout=10)
             if response.status_code != 200:
                 print(f"⚠️ Page {page_num} returned status {response.status_code}")
+                print(f"Server: {response.headers.get('server')}")
+                print(f"Response: {response.text[:500]}")
                 continue
 
             soup = BeautifulSoup(response.text, "html.parser")
@@ -146,6 +148,8 @@ def check_entries():
         response = requests.get(url, headers=HEADERS, timeout=10)
         if response.status_code != 200:
             print(f"⚠️ Entries page returned {response.status_code}")
+            print(f"Server: {response.headers.get('server')}")
+            print(f"Response: {response.text[:500]}")
             return
 
         soup = BeautifulSoup(response.text, "html.parser")
