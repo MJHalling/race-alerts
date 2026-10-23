@@ -1,18 +1,50 @@
-import requests
 from bs4 import BeautifulSoup
 from twilio.rest import Client
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.support.ui import WebDriverWait
 import os
 import time
 
-HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+def load_page(url):
+    options = Options()
+    options.binary_location = "/usr/bin/chromium"
+    options.add_argument("--headless=new")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--window-size=1920,1080")
+    options.add_argument(
+        "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
         "AppleWebKit/537.36 (KHTML, like Gecko) "
         "Chrome/141.0.0.0 Safari/537.36"
-    ),
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "Accept-Language": "en-US,en;q=0.9",
-}
+    )
+
+    service = Service("/usr/bin/chromedriver")
+    driver = webdriver.Chrome(service=service, options=options)
+
+    try:
+        print(f"🌐 Opening with Chromium: {url}")
+        driver.get(url)
+
+        WebDriverWait(driver, 20).until(
+            lambda d: d.title != "Just a moment..."
+        )
+
+        print(f"📄 Page title: {driver.title}")
+
+        if "Just a moment" in driver.title:
+            print("⚠️ Cloudflare challenge is still blocking Chromium.")
+            return None
+
+        return driver.page_source
+
+    except Exception as e:
+        print(f"⚠️ Chromium error: {e}")
+        return None
+
+    finally:
+        driver.quit()
 
 # ✅ Tracked horses
 tracked_horses = {
@@ -86,14 +118,15 @@ def check_site():
         url = base_url if page_num == 1 else f"{base_url}/page/{page_num}/"
         print(f"🔍 Checking: {url}")
         try:
-            response = requests.get(url, headers=HEADERS, timeout=10)
-            if response.status_code != 200:
-                print(f"⚠️ Page {page_num} returned status {response.status_code}")
-                print(f"Server: {response.headers.get('server')}")
-                print(f"Response: {response.text[:500]}")
+
+            html = load_page(url)
+
+            if not html:
+                print(f"⚠️ Could not load page {page_num}")
                 continue
 
-            soup = BeautifulSoup(response.text, "html.parser")
+            soup = BeautifulSoup(html, "html.parser")
+            
             for row in soup.find_all("tr"):
                 raw = row.get_text(separator="|").strip()
                 normalized = normalize_row_text(raw)
@@ -145,14 +178,15 @@ def check_entries():
     url = "https://eclipsetbpartners.com/stable/upcoming-races/entries/"
     print(f"📡 Checking Entries: {url}")
     try:
-        response = requests.get(url, headers=HEADERS, timeout=10)
-        if response.status_code != 200:
-            print(f"⚠️ Entries page returned {response.status_code}")
-            print(f"Server: {response.headers.get('server')}")
-            print(f"Response: {response.text[:500]}")
+
+        html = load_page(url)
+
+        if not html:
+            print("⚠️ Could not load Entries page")
             return
 
-        soup = BeautifulSoup(response.text, "html.parser")
+        soup = BeautifulSoup(html, "html.parser")
+
         for row in soup.find_all("tr"):
             raw = row.get_text(separator="|").strip()
             normalized = normalize_row_text(raw)
